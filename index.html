@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>視線入力VOCA - 設定＆操作画面</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      height: 100vh;
+      background-color: #000000; /* 全体背景を黒に設定 */
+      overflow: hidden;
+    }
+
+    /* 画面切り替え表示 */
+    .screen {
+      display: none;
+      width: 100vw;
+      height: 100vh;
+    }
+    .screen.active {
+      display: flex;
+    }
+
+    /* ------------------------------
+       1. 設定画面のスタイル
+    ------------------------------ */
+    #setup-screen {
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px;
+      overflow-y: auto;
+      background-color: #121212; /* 設定画面背景（暗めのグレー） */
+      color: #ffffff;
+    }
+
+    .setup-card {
+      background: #1e1e1e;
+      border: 1px solid #444;
+      border-radius: 12px;
+      padding: 20px;
+      width: 100%;
+      max-width: 800px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      margin-bottom: 20px;
+      color: #ffffff;
+    }
+
+    h1, h2 { margin-top: 0; color: #ffffff; }
+
+    .option-count-selector {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .option-count-selector label {
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .item-config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+    }
+
+    .item-config-box {
+      border: 2px solid #555;
+      border-radius: 8px;
+      padding: 12px;
+      background: #2a2a2a;
+      color: #ffffff;
+    }
+
+    .item-config-box label {
+      display: block;
+      margin-top: 8px;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+
+    .item-config-box input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      font-size: 1rem;
+      border: 1px solid #666;
+      border-radius: 4px;
+      margin-top: 4px;
+      background: #333;
+      color: #fff;
+    }
+
+    .item-config-box input[type="file"] {
+      margin-top: 4px;
+    }
+
+    .preview-thumb {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+      border: 1px solid #666;
+      background: #fff;
+      margin-top: 8px;
+      border-radius: 4px;
+    }
+
+    .start-btn {
+      background-color: #0d6efd;
+      color: white;
+      font-size: 1.5rem;
+      font-weight: bold;
+      padding: 15px 40px;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(13,110,253,0.5);
+      margin-top: 10px;
+      margin-bottom: 30px;
+    }
+
+    .start-btn:hover { background-color: #0b5ed7; }
+
+    /* ------------------------------
+       2. 操作（プレイ）画面のスタイル
+    ------------------------------ */
+    #play-screen {
+      flex-direction: column;
+      position: relative;
+      background-color: #000000; /* 操作画面の背景：黒 */
+    }
+
+    /* 設定に戻るボタン（右上） */
+    .back-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 100;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 1px solid #ffffff;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .play-container {
+      flex: 1;
+      display: grid;
+      width: 100%;
+      height: 100%;
+      padding: 60px; /* 余白を大きく取って枠を中央寄せ */
+      gap: 40px;
+      align-items: center;
+      justify-items: center;
+    }
+
+    /* 枠数別のレイアウト設定 */
+    .play-container.mode-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .play-container.mode-3 {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .play-container.mode-4 {
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+    }
+
+    /* 枠（選択カード）のスタイル：大きさを小さく縮小＆背景黒・枠線白 */
+    .card {
+      width: 60%;          /* 幅をさらに小さく調整 */
+      height: 50%;         /* 高さをさらに小さく調整 */
+      background: #111111; /* カード内背景：暗いグレー/黒 */
+      border: 6px solid #ffffff; /* 枠線：白 */
+      border-radius: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.2); /* 白い光のシャドウ */
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.1s;
+    }
+
+    .card:active { transform: scale(0.95); }
+
+    .card img {
+      max-width: 65%;
+      max-height: 50%;
+      object-fit: contain;
+      margin-bottom: 12px;
+    }
+
+    .card .label {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #ffffff; /* 文字色：白 */
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== 1. 設定画面 ==================== -->
+  <div id="setup-screen" class="screen active">
+    <h1>VOCA 初期設定画面</h1>
+
+    <div class="setup-card">
+      <h2>1. 選択肢の数を選んでください</h2>
+      <div class="option-count-selector">
+        <label><input type="radio" name="count" value="2" checked onchange="changeCount(2)"> 2択</label>
+        <label><input type="radio" name="count" value="3" onchange="changeCount(3)"> 3択</label>
+        <label><input type="radio" name="count" value="4" onchange="changeCount(4)"> 4択</label>
+      </div>
+    </div>
+
+    <div class="setup-card">
+      <h2>2. 各枠の文字とイラストを設定してください</h2>
+      <div class="item-config-grid" id="config-grid">
+        <!-- JSで動的生成 -->
+      </div>
+    </div>
+
+    <button class="start-btn" onclick="startApp()">決定してスタート</button>
+  </div>
+
+
+  <!-- ==================== 2. 操作画面 ==================== -->
+  <div id="play-screen" class="screen">
+    <button class="back-btn" onclick="showSetup()">⚙ 設定に戻る</button>
+    <div class="play-container" id="play-container">
+      <!-- JSで動的生成 -->
+    </div>
+  </div>
+
+
+  <script>
+    // デフォルト項目データ
+    let currentCount = 2;
+    let items = [
+      { text: 'はい', img: 'https://via.placeholder.com/200/28a745/FFFFFF?text=YES' },
+      { text: 'いいえ', img: 'https://via.placeholder.com/200/dc3545/FFFFFF?text=NO' },
+      { text: 'お水', img: 'https://via.placeholder.com/200/17a2b8/FFFFFF?text=WATER' },
+      { text: 'トイレ', img: 'https://via.placeholder.com/200/ffc107/FFFFFF?text=TOILET' }
+    ];
+
+    // 保存データの読み込み
+    function loadSavedData() {
+      const savedCount = localStorage.getItem('voca_count');
+      const savedItems = localStorage.getItem('voca_items');
+      if (savedCount) {
+        currentCount = parseInt(savedCount, 10);
+        document.querySelector(`input[name="count"][value="${currentCount}"]`).checked = true;
+      }
+      if (savedItems) {
+        items = JSON.parse(savedItems);
+      }
+    }
+
+    // 設定画面の入力フォーム構築
+    function renderSetupForm() {
+      const grid = document.getElementById('config-grid');
+      grid.innerHTML = '';
+
+      for (let i = 0; i < currentCount; i++) {
+        const box = document.createElement('div');
+        box.className = 'item-config-box';
+        box.innerHTML = `
+          <h3>枠 ${i + 1}</h3>
+          <label>表示テキスト・読み上げ文字:</label>
+          <input type="text" id="text-${i}" value="${items[i].text}" onchange="updateText(${i}, this.value)">
+          <label>画像・イラストの変更:</label>
+          <input type="file" accept="image/*" onchange="updateImage(${i}, this)">
+          <div>
+            <img src="${items[i].img}" id="preview-${i}" class="preview-thumb" alt="プレビュー">
+          </div>
+        `;
+        grid.appendChild(box);
+      }
+    }
+
+    // 選択肢数の変更
+    function changeCount(count) {
+      currentCount = count;
+      renderSetupForm();
+    }
+
+    // テキスト更新
+    function updateText(index, value) {
+      items[index].text = value;
+    }
+
+    // 画像更新
+    function updateImage(index, input) {
+      const file = input.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          items[index].img = e.target.result;
+          document.getElementById(`preview-${index}`).src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    // スタート（操作画面へ切り替え）
+    function startApp() {
+      localStorage.setItem('voca_count', currentCount);
+      localStorage.setItem('voca_items', JSON.stringify(items));
+
+      const container = document.getElementById('play-container');
+      container.innerHTML = '';
+      container.className = `play-container mode-${currentCount}`;
+
+      for (let i = 0; i < currentCount; i++) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.onclick = () => speak(items[i].text);
+
+        card.innerHTML = `
+          <img src="${items[i].img}" alt="${items[i].text}">
+          <div class="label">${items[i].text}</div>
+        `;
+        container.appendChild(card);
+      }
+
+      document.getElementById('setup-screen').classList.remove('active');
+      document.getElementById('play-screen').classList.add('active');
+    }
+
+    // 設定画面に戻る
+    function showSetup() {
+      document.getElementById('play-screen').classList.remove('active');
+      document.getElementById('setup-screen').classList.add('active');
+    }
+
+    // 音声読み上げ
+    function speak(text) {
+      if (!text) return;
+      const uttr = new SpeechSynthesisUtterance(text);
+      uttr.lang = "ja-JP";
+      speechSynthesis.speak(uttr);
+    }
+
+    // 初期化実行
+    loadSavedData();
+    renderSetupForm();
+  </script>
+
+</body>
+</html>
